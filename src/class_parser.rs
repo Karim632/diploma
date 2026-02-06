@@ -1348,8 +1348,28 @@ fn read_constant_pool(class_file_path: &str, reader: &mut BufReader<File>, const
     let mut constant_pool = Vec::with_capacity((constant_pool_count).into());
     constant_pool.push(CpInfo::Integer(CpInteger { bytes: [0; 4] }));
 
-    for _ in 0..constant_pool_count - 1 {
-        constant_pool.push(read_constant_pool_entry(class_file_path, reader)?);
+    let mut i = 0;
+    while i < constant_pool_count - 1 {
+        let entry = read_constant_pool_entry(class_file_path, reader)?;
+
+        // 8-byte vnosi povzročijo, da je naslednji constant pool entry unusable, ampak mora obstajati
+        // (to je všteto v constant_pool_count)
+        // "In retrospect, making 8-byte constants take two constant pool entries was a poor choice. " - JVM specification
+        let mut two_byte_entry = false;
+        match entry {
+            CpInfo::Long(_) | CpInfo::Double(_) => {
+                two_byte_entry = true;
+            }
+            _ => ()
+        }
+
+        constant_pool.push(entry);
+        if two_byte_entry {
+            constant_pool.push(CpInfo::Integer(CpInteger { bytes: [0; 4] }));
+            i += 1;
+        }
+
+        i += 1;
     }
 
     return Ok(constant_pool);
@@ -1503,7 +1523,7 @@ fn read_attribute(class_file_path: &str, reader: &mut BufReader<File>, constant_
     let attribute_name_cp_utf8 = match &constant_pool[usize::from(attribute_name_index)] {
         CpInfo::Utf8(cp_utf8) => cp_utf8,
         _ => {
-            return Err(MalformedClassFile { file_path: class_file_path.into(), msg: format!("attribute_name_index {} ne vodi to CpUtf8", attribute_name_index) }.into());
+            return Err(MalformedClassFile { file_path: class_file_path.into(), msg: format!("attribute_name_index {} ne vodi do CpUtf8", attribute_name_index) }.into());
         }
     };
 

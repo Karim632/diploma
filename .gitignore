@@ -3,3 +3,7 @@
 /*.java
 /*.class
 /*.txt
+/*.s
+
+riscv-asm.pdf
+riscv-unprivileged.pdf
