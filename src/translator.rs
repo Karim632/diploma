@@ -2203,7 +2203,7 @@ fn code_to_riscv_vregs(attribute_code: &AttributeCode, constant_pool: &Vec<CpInf
     if this_method_name != "main" {
         let (args_types, _) = get_method_arg_and_return_types(this_method_descriptor).unwrap();
 
-        let mut sp_offset = -(args_types.len() as i32 - 1) * i32::from(WORD_SIZE);
+        let mut fp_offset = (args_types.len() as i32 - 1) * i32::from(WORD_SIZE);
         let mut local_index = 0;
         for arg_type in args_types {
             match arg_type {
@@ -2211,42 +2211,42 @@ fn code_to_riscv_vregs(attribute_code: &AttributeCode, constant_pool: &Vec<CpInf
                     let rd = Some(RiscvReg::TEMP(RiscvTempReg::INT(local_index + 1)));
                     let rs1 = Some(RiscvReg::FP);
                     let rs2 = None;
-                    let imm = Some(sp_offset);
+                    let imm = Some(fp_offset);
                     let mnemonic = RiscvMnemonic::LW;
                     riscv_code_vregs.push(RiscvInstr::new(rd, rs1, rs2, imm, mnemonic, None, None)?);
 
-                    sp_offset += i32::from(WORD_SIZE);
+                    fp_offset -= i32::from(WORD_SIZE);
                     local_index += 1;
                 },
                 JvmType::LONG => {
                     let rd = Some(RiscvReg::TEMP(RiscvTempReg::INT(local_index + 2)));
                     let rs1 = Some(RiscvReg::FP);
                     let rs2 = None;
-                    let imm = Some(sp_offset);
+                    let imm = Some(fp_offset);
                     let mnemonic = RiscvMnemonic::LW;
                     riscv_code_vregs.push(RiscvInstr::new(rd, rs1, rs2, imm, mnemonic, None, None)?);
 
-                    sp_offset += i32::from(WORD_SIZE);
+                    fp_offset -= i32::from(WORD_SIZE);
 
                     let rd = Some(RiscvReg::TEMP(RiscvTempReg::INT(local_index + 1)));
                     let rs1 = Some(RiscvReg::FP);
                     let rs2 = None;
-                    let imm = Some(sp_offset);
+                    let imm = Some(fp_offset);
                     let mnemonic = RiscvMnemonic::LW;
                     riscv_code_vregs.push(RiscvInstr::new(rd, rs1, rs2, imm, mnemonic, None, None)?);
 
-                    sp_offset += i32::from(WORD_SIZE);
+                    fp_offset -= i32::from(WORD_SIZE);
                     local_index += 2;
                 },
                 JvmType::FLOAT => {
                     let rd = Some(RiscvReg::TEMP(RiscvTempReg::FLOAT(local_index + 1)));
                     let rs1 = Some(RiscvReg::FP);
                     let rs2 = None;
-                    let imm = Some(sp_offset);
+                    let imm = Some(fp_offset);
                     let mnemonic = RiscvMnemonic::FLW;
                     riscv_code_vregs.push(RiscvInstr::new(rd, rs1, rs2, imm, mnemonic, None, None)?);
 
-                    sp_offset += i32::from(WORD_SIZE);
+                    fp_offset -= i32::from(WORD_SIZE);
                     local_index += 1;
                 },
             }
