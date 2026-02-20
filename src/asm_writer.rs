@@ -120,20 +120,15 @@ pub fn asm_write(out_file_path: String, class_file: &ClassFile, method_i_to_risc
         writeln!(&out_file, ".globl {}", function_label).unwrap();
         writeln!(&out_file, ".type {}, @function", function_label).unwrap();
         writeln!(&out_file, "{}:", function_label).unwrap();
-        if method_name_utf8 != "main" {
-            write_prologue(&mut out_file, saved_temps_size);
-        }
+        write_prologue(&mut out_file, saved_temps_size);
         for instr in riscv_code {
             writeln!(&out_file, "\t\t{}", instr.to_string(&vreg_to_reg_int, &vreg_to_reg_float)).unwrap();
         }
-        if method_name_utf8 != "main" {
-            write_epilogue(&mut out_file, epilogue_label);
-        }
-        else {
-            writeln!(&out_file, "{}:", epilogue_label).unwrap();
-            writeln!(&out_file, "\t\tRET").unwrap();
-
-        }
+        write_epilogue(&mut out_file, epilogue_label);
+        // else {
+        //     writeln!(&out_file, "{}:", epilogue_label).unwrap();
+        //     writeln!(&out_file, "\t\tRET").unwrap();
+        // }
         writeln!(&out_file, "\n").unwrap();
     }
 }
