@@ -355,7 +355,7 @@ pub enum RiscvInstrFormat {
     B,
     J,
 
-    RCVT, // za float/in conversion ukaze, ki so v formatu R, ampak uporabljajo samo rd in rs1 (ne pa rs2)
+    RWITHOUTRS2, // za float ukaze, ki so v formatu R, ampak uporabljajo samo rd in rs1 (ne pa rs2)
 }
 
 impl fmt::Display for RiscvInstrFormat {
@@ -568,7 +568,7 @@ impl RiscvInstr {
             | RiscvMnemonic::FCVTSWU
             | RiscvMnemonic::FMVXW
             | RiscvMnemonic::FMVWX => {
-                RiscvInstrFormat::RCVT
+                RiscvInstrFormat::RWITHOUTRS2
             }
         };
 
@@ -579,7 +579,7 @@ impl RiscvInstr {
                     _ => Err(InvalidRiscvInstrError { rd, rs1, rs2, imm, format }),
                 }
             },
-            RiscvInstrFormat::I | RiscvInstrFormat::RCVT => {
+            RiscvInstrFormat::I | RiscvInstrFormat::RWITHOUTRS2 => {
                 match rs1 {
                     Some(rs1) => Ok(Vec::from([rs1])),
                     None => Err(InvalidRiscvInstrError { rd, rs1, rs2, imm, format }),
@@ -603,7 +603,7 @@ impl RiscvInstr {
         }
 
         let some_regs = match format {
-            RiscvInstrFormat::R | RiscvInstrFormat::I | RiscvInstrFormat::U | RiscvInstrFormat::J | RiscvInstrFormat::RCVT => {
+            RiscvInstrFormat::R | RiscvInstrFormat::I | RiscvInstrFormat::U | RiscvInstrFormat::J | RiscvInstrFormat::RWITHOUTRS2 => {
                 match rd {
                     Some(rd) => Ok(Vec::from([rd])),
                     _ => Err(InvalidRiscvInstrError { rd, rs1, rs2, imm, format }),
@@ -630,7 +630,7 @@ impl RiscvInstr {
 
         if let Some(imm) = imm {
             match format {
-                RiscvInstrFormat::R | RiscvInstrFormat::RCVT => {
+                RiscvInstrFormat::R | RiscvInstrFormat::RWITHOUTRS2 => {
                     return Err(InvalidRiscvInstrError { rd, rs1, rs2, imm: Some(imm), format }.into())
                 },
                 RiscvInstrFormat::I => {
@@ -749,7 +749,7 @@ impl RiscvInstr {
 
                 format!("{}{} {}, {}", label_or_empty, self.mnemonic.to_string(), fixed_rd.unwrap(), jump_target)
             },
-            RiscvInstrFormat::RCVT => format!("{}{} {}, {}", label_or_empty, self.mnemonic.to_string(), fixed_rd.unwrap(), fixed_rs1.unwrap()),
+            RiscvInstrFormat::RWITHOUTRS2 => format!("{}{} {}, {}", label_or_empty, self.mnemonic.to_string(), fixed_rd.unwrap(), fixed_rs1.unwrap()),
         };
     }
 }
