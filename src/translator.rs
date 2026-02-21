@@ -644,7 +644,7 @@ impl RiscvInstr {
                     }
                 },
                 RiscvInstrFormat::U | RiscvInstrFormat::J => {
-                    if imm > RUSTV_INSTR_FORMAT_U_IMM_MAX || imm < RUSTV_INSTR_FORMAT_U_IMM_MIN {
+                    if (imm > RUSTV_INSTR_FORMAT_U_IMM_MAX || imm < RUSTV_INSTR_FORMAT_U_IMM_MIN) && mnemonic != RiscvMnemonic::LUI {
                         return Err(InvalidRiscvInstrError { rd, rs1, rs2, imm: Some(imm), format }.into())
                     }
                 },
