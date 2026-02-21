@@ -538,8 +538,6 @@ impl RiscvInstr {
             | RiscvMnemonic::FSGNJS
             | RiscvMnemonic::FSGNJNS
             | RiscvMnemonic::FSGNJXS
-            | RiscvMnemonic::FMVXW
-            | RiscvMnemonic::FMVWX
             | RiscvMnemonic::FEQS
             | RiscvMnemonic::FLTS
             | RiscvMnemonic::FLES
@@ -567,7 +565,9 @@ impl RiscvInstr {
             RiscvMnemonic::FCVTWS
             | RiscvMnemonic::FCVTWUS
             | RiscvMnemonic::FCVTSW
-            | RiscvMnemonic::FCVTSWU => {
+            | RiscvMnemonic::FCVTSWU
+            | RiscvMnemonic::FMVXW
+            | RiscvMnemonic::FMVWX => {
                 RiscvInstrFormat::RCVT
             }
         };
