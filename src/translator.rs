@@ -2126,21 +2126,18 @@ fn riscv_append_long_sign_flip(riscv_code_vregs: &mut Vec<RiscvInstr>, valuehigh
     let mnemonic = RiscvMnemonic::ADDI;
     riscv_code_vregs.push(RiscvInstr::new(rd, rs1, rs2, imm, mnemonic, None, None)?);
 
-    let no_overflow_label = next_anon_label(anon_label_counter);
-
-    let rd = None;
-    let rs1 = Some(RiscvReg::TEMP(RiscvTempReg::INT(valuelow_vreg)));
-    let rs2 = Some(RiscvReg::TEMP(RiscvTempReg::INT(carry_check_vreg)));
+    let rd = Some(RiscvReg::TEMP(RiscvTempReg::INT(valuelow_vreg)));
+    let rs1 = Some(RiscvReg::TEMP(RiscvTempReg::INT(carry_check_vreg)));
+    let rs2 = Some(RiscvReg::TEMP(RiscvTempReg::INT(valuelow_vreg)));
     let imm = None;
-    let mnemonic = RiscvMnemonic::BLT;
-    let jumps = Some(Vec::from([no_overflow_label.clone()]));
-    riscv_code_vregs.push(RiscvInstr::new(rd, rs1, rs2, imm, mnemonic, None, jumps)?);
+    let mnemonic = RiscvMnemonic::SLTU;
+    riscv_code_vregs.push(RiscvInstr::new(rd, rs1, rs2, imm, mnemonic, None, None)?);
 
     let rd = Some(RiscvReg::TEMP(RiscvTempReg::INT(valuehigh_vreg)));
     let rs1 = Some(RiscvReg::TEMP(RiscvTempReg::INT(valuehigh_vreg)));
-    let rs2 = None;
-    let imm = Some(1);
-    let mnemonic = RiscvMnemonic::ADDI;
+    let rs2 = Some(RiscvReg::TEMP(RiscvTempReg::INT(valuelow_vreg)));
+    let imm = None;
+    let mnemonic = RiscvMnemonic::ADD;
     riscv_code_vregs.push(RiscvInstr::new(rd, rs1, rs2, imm, mnemonic, None, None)?);
 
     let rd = Some(RiscvReg::TEMP(RiscvTempReg::INT(valuelow_vreg)));
@@ -2148,8 +2145,7 @@ fn riscv_append_long_sign_flip(riscv_code_vregs: &mut Vec<RiscvInstr>, valuehigh
     let rs2 = None;
     let imm = Some(0);
     let mnemonic = RiscvMnemonic::ADDI;
-    let label = Some(no_overflow_label);
-    riscv_code_vregs.push(RiscvInstr::new(rd, rs1, rs2, imm, mnemonic, label, None)?);
+    riscv_code_vregs.push(RiscvInstr::new(rd, rs1, rs2, imm, mnemonic, None, None)?);
 
     return Ok(());
 }
