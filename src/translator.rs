@@ -470,17 +470,17 @@ impl Display for InvalidRiscvInstrError {
 
 impl Error for InvalidRiscvInstrError {}
 
-// 10 bits
+// 12 bits, saved as i32
 const RUSTV_INSTR_FORMAT_I_IMM_MIN: i32 = -2048;
-const RUSTV_INSTR_FORMAT_I_IMM_MAX: i32 = 2047;
+const RUSTV_INSTR_FORMAT_I_IMM_MAX: i32 = 4096;
 
-// 7 bits
-const RUSTV_INSTR_FORMAT_S_IMM_MIN: i32 = -128;
-const RUSTV_INSTR_FORMAT_S_IMM_MAX: i32 = 127;
+// 7 bits, saved as i32
+const RUSTV_INSTR_FORMAT_S_IMM_MIN: i32 = -64;
+const RUSTV_INSTR_FORMAT_S_IMM_MAX: i32 = 128;
 
-// 20 bits
-const RUSTV_INSTR_FORMAT_U_IMM_MIN: i32 = -1_048_576;
-const RUSTV_INSTR_FORMAT_U_IMM_MAX: i32 = 1_048_575;
+// 20 bits, saved as i32
+const RUSTV_INSTR_FORMAT_U_IMM_MIN: i32 = -524_288;
+const RUSTV_INSTR_FORMAT_U_IMM_MAX: i32 = 1_048_576;
 
 impl RiscvInstr {
     pub fn new(rd: Option<RiscvReg>, rs1: Option<RiscvReg>, rs2: Option<RiscvReg>, imm: Option<i32>, mnemonic: RiscvMnemonic, label: Option<String>, jumps: Option<Vec<String>>) -> Result<RiscvInstr, Box<dyn error::Error>> {
@@ -4298,7 +4298,7 @@ fn code_to_riscv_vregs(attribute_code: &AttributeCode, constant_pool: &Vec<CpInf
                         let imm = Some(value);
                         let mnemonic = RiscvMnemonic::LUI;
                         riscv_code_vregs.push(RiscvInstr::new(rd, rs1, rs2, imm, mnemonic, None, None)?);
-
+                        
                         let rd = Some(RiscvReg::TEMP(RiscvTempReg::INT(vreg_base + 1)));
                         let rs1 = Some(RiscvReg::TEMP(RiscvTempReg::INT(vreg_base + 1)));
                         let rs2 = None;
