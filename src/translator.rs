@@ -4042,22 +4042,19 @@ fn code_to_riscv_vregs(attribute_code: &AttributeCode, constant_pool: &Vec<CpInf
                 let mnemonic = RiscvMnemonic::ADD;
                 riscv_code_vregs.push(RiscvInstr::new(rd, rs1, rs2, imm, mnemonic, None, None)?);
 
-                let skip_overflow_label = next_anon_label(anon_label_counter);
-
-                let rd = None;
+                let rd = Some(RiscvReg::TEMP(RiscvTempReg::INT(vreg_base + 2)));
                 let rs1 = Some(RiscvReg::TEMP(RiscvTempReg::INT(vreg_base + 1)));
                 let rs2 = Some(RiscvReg::TEMP(RiscvTempReg::INT(vreg_base - 3)));
                 let imm = None;
-                let mnemonic = RiscvMnemonic::BLTU;
-                let jumps = Some(Vec::from([skip_overflow_label.clone()]));
+                let mnemonic = RiscvMnemonic::SLTU;
                 riscv_code_vregs.push(RiscvInstr::new(rd, rs1, rs2, imm, mnemonic, None, jumps)?);
                 
-                /* overflow */
+                /* possible overflow */
                 let rd = Some(RiscvReg::TEMP(RiscvTempReg::INT(vreg_base - 2)));
                 let rs1 = Some(RiscvReg::TEMP(RiscvTempReg::INT(vreg_base - 2)));
-                let rs2 = None;
-                let imm = Some(1);
-                let mnemonic = RiscvMnemonic::ADDI;
+                let rs2 = Some(RiscvReg::TEMP(RiscvTempReg::INT(vreg_base + 2)));
+                let imm = None;
+                let mnemonic = RiscvMnemonic::ADD;
                 riscv_code_vregs.push(RiscvInstr::new(rd, rs1, rs2, imm, mnemonic, None, None)?);
 
                 /* upper 32 bits */
