@@ -1778,7 +1778,7 @@ fn riscv_vregs_append_save_ret_val_and_j_to_epilogue(riscv_code_vregs: &mut Vec<
     }
 
     let rd = Some(RiscvReg::ZERO);
-    let rs1 = Some(RiscvReg::ZERO);
+    let rs1 = None;
     let rs2 = None;
     let imm = None;
     let mnemonic = RiscvMnemonic::JAL;
@@ -5160,6 +5160,38 @@ fn code_to_riscv_vregs(attribute_code: &AttributeCode, constant_pool: &Vec<CpInf
                 let mnemonic = RiscvMnemonic::ADDI;
                 let label = Some(end_of_array_init_label);
                 riscv_code_vregs.push(RiscvInstr::new(rd, rs1, rs2, imm, mnemonic, label, None)?);
+
+                /* Padding do prvega naslova v pomnilniku, ki je deljiv s 4 */
+
+                let rd = Some(RiscvReg::TEMP(RiscvTempReg::INT(array_init_curr_size_vreg)));
+                let rs1 = Some(RiscvReg::ZERO);
+                let rs2 = None;
+                let imm = Some(WORD_SIZE.into());
+                let mnemonic = RiscvMnemonic::ADDI;
+                riscv_code_vregs.push(RiscvInstr::new(rd, rs1, rs2, imm, mnemonic, None, None)?);
+
+                let rd = Some(RiscvReg::TEMP(RiscvTempReg::INT(array_init_curr_elem_p_vreg)));
+                let rs1 = Some(RiscvReg::TEMP(RiscvTempReg::INT(array_total_size_vreg)));
+                let rs2 = Some(RiscvReg::TEMP(RiscvTempReg::INT(array_init_curr_size_vreg)));
+                let imm = None;
+                let mnemonic = RiscvMnemonic::REM;
+                riscv_code_vregs.push(RiscvInstr::new(rd, rs1, rs2, imm, mnemonic, None, None)?);
+
+                // let rd = Some(RiscvReg::TEMP(RiscvTempReg::INT(array_init_curr_elem_p_vreg)));
+                // let rs1 = Some(RiscvReg::TEMP(RiscvTempReg::INT(array_init_curr_elem_p_vreg)));
+                // let rs2 = None;
+                // let imm = Some(-4);
+                // let mnemonic = RiscvMnemonic::ADDI;
+                // riscv_code_vregs.push(RiscvInstr::new(rd, rs1, rs2, imm, mnemonic, None, None)?);
+
+                let rd = Some(RiscvReg::TEMP(RiscvTempReg::INT(array_total_size_vreg)));
+                let rs1 = Some(RiscvReg::TEMP(RiscvTempReg::INT(array_total_size_vreg)));
+                let rs2 = Some(RiscvReg::TEMP(RiscvTempReg::INT(array_init_curr_elem_p_vreg)));
+                let imm = None;
+                let mnemonic = RiscvMnemonic::SUB;
+                riscv_code_vregs.push(RiscvInstr::new(rd, rs1, rs2, imm, mnemonic, None, None)?);
+
+                //
 
                 let rd = Some(RiscvReg::HP);
                 let rs1 = Some(RiscvReg::HP);
