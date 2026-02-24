@@ -51,7 +51,7 @@ fn main() {
 
     let mut method_i_to_code_info = HashMap::new();
 
-    asm_writer::asm_write("outvregs.s".to_string(), &class_file, &method_i_to_riscv_code_vregs, None);
+    // asm_writer::asm_write("outvregs.s".to_string(), &class_file, &method_i_to_riscv_code_vregs, None);
 
     for (i, mut riscv_code_vregs) in method_i_to_riscv_code_vregs.iter_mut() {
         let max_locals = *method_i_to_max_locals.get(i).unwrap();

@@ -73,7 +73,7 @@ fn allocate_int_or_float(riscv_code_vregs: &mut Vec<RiscvInstr>, temp_reg_type: 
                 }
             }
 
-            let mut new_color = 1;
+            let mut new_color = 0;
             while neighbour_colors.contains(&new_color) {
                 new_color += 1;
             }
