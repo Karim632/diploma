@@ -191,9 +191,7 @@ fn allocate_int_or_float(riscv_code_vregs: &mut Vec<RiscvInstr>, temp_reg_type: 
                         
                         let _ = replace(&mut riscv_code_vregs[i], replacement_instr);
 
-                        // add load or store
-                        let new_instr;
-                        let new_instr_i;
+                        // add load and/or store
                         if in_uses {
                             // load in before use
                             let rs1 = Some(RiscvReg::FP);
@@ -204,10 +202,11 @@ fn allocate_int_or_float(riscv_code_vregs: &mut Vec<RiscvInstr>, temp_reg_type: 
                                 TempRegType::FLOAT => (Some(RiscvReg::TEMP(RiscvTempReg::FLOAT(new_vreg))), RiscvMnemonic::FLW),
                             };
 
-                            new_instr = RiscvInstr::new(rd, rs1, rs2, imm, mnemonic, None, None)?;
-                            new_instr_i = i;
+                            riscv_code_vregs.insert(i, RiscvInstr::new(rd, rs1, rs2, imm, mnemonic, None, None)?);
+
+                            i += 1;
                         }
-                        else {
+                        if in_defs {
                             // store after def
                             let rd = None;
                             let rs1 = Some(RiscvReg::FP);
@@ -217,13 +216,10 @@ fn allocate_int_or_float(riscv_code_vregs: &mut Vec<RiscvInstr>, temp_reg_type: 
                                 TempRegType::FLOAT => (Some(RiscvReg::TEMP(RiscvTempReg::FLOAT(new_vreg))), RiscvMnemonic::FSW),
                             };
 
-                            new_instr = RiscvInstr::new(rd, rs1, rs2, imm, mnemonic, None, None)?;
-                            new_instr_i = i + 1;
+                            riscv_code_vregs.insert(i + 1, RiscvInstr::new(rd, rs1, rs2, imm, mnemonic, None, None)?);
+
+                            i += 1;
                         }
-
-                        riscv_code_vregs.insert(new_instr_i, new_instr);
-
-                        i += 1;
                     }
 
                     i += 1;
