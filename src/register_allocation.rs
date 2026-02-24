@@ -210,9 +210,9 @@ fn allocate_int_or_float(riscv_code_vregs: &mut Vec<RiscvInstr>, temp_reg_type: 
                         else {
                             // store after def
                             let rd = None;
-                            let rs2 = Some(RiscvReg::FP);
+                            let rs1 = Some(RiscvReg::FP);
                             let imm = Some(fp_offset);
-                            let (rs1, mnemonic) = match temp_reg_type {
+                            let (rs2, mnemonic) = match temp_reg_type {
                                 TempRegType::INT => (Some(RiscvReg::TEMP(RiscvTempReg::INT(new_vreg))), RiscvMnemonic::SW),
                                 TempRegType::FLOAT => (Some(RiscvReg::TEMP(RiscvTempReg::FLOAT(new_vreg))), RiscvMnemonic::FSW),
                             };
