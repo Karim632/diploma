@@ -2061,10 +2061,10 @@ fn riscv_vregs_append_long_sub(riscv_code_vregs: &mut Vec<RiscvInstr>, minuendhi
     let imm = None;
     let mnemonic = RiscvMnemonic::SUB;
     if subtrahendhigh_vreg == 0 {
-        rs2 = Some(RiscvReg::TEMP(RiscvTempReg::INT(subtrahendhigh_vreg)));
+        rs2 = Some(RiscvReg::ZERO);
     }
     else {
-        rs2 = Some(RiscvReg::ZERO);
+        rs2 = Some(RiscvReg::TEMP(RiscvTempReg::INT(subtrahendhigh_vreg)));
     }
     riscv_code_vregs.push(RiscvInstr::new(rd, rs1, rs2, imm, mnemonic, None, None)?);
     
