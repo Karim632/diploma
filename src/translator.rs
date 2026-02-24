@@ -455,6 +455,7 @@ pub struct RiscvInstr {
 
 #[derive(Debug)]
 struct InvalidRiscvInstrError {
+    mnemonic: RiscvMnemonic,
     rd: Option<RiscvReg>,
     rs1: Option<RiscvReg>,
     rs2: Option<RiscvReg>,
@@ -464,23 +465,23 @@ struct InvalidRiscvInstrError {
 
 impl Display for InvalidRiscvInstrError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Neveljaven Risc-V ukaz: rd = {:#?}, rs1 = {:#?}, rs2 = {:#?}, imm = {:#?}, format = {}.", self.rd, self.rs1, self.rs2, self.imm, self.format)
+        write!(f, "Neveljaven Risc-V ukaz: mnemonic = {}, rd = {:#?}, rs1 = {:#?}, rs2 = {:#?}, imm = {:#?}, format = {}.", self.mnemonic, self.rd, self.rs1, self.rs2, self.imm, self.format)
     }
 }
 
 impl Error for InvalidRiscvInstrError {}
 
-// 12 bits, saved as i32
+// 12 bits
 const RUSTV_INSTR_FORMAT_I_IMM_MIN: i32 = -2048;
-const RUSTV_INSTR_FORMAT_I_IMM_MAX: i32 = 4096;
+const RUSTV_INSTR_FORMAT_I_IMM_MAX: i32 = 2047;
 
-// 7 bits, saved as i32
-const RUSTV_INSTR_FORMAT_S_IMM_MIN: i32 = -64;
-const RUSTV_INSTR_FORMAT_S_IMM_MAX: i32 = 128;
+// 12 bits
+const RUSTV_INSTR_FORMAT_S_IMM_MIN: i32 = -2048;
+const RUSTV_INSTR_FORMAT_S_IMM_MAX: i32 = 2047;
 
-// 20 bits, saved as i32
-const RUSTV_INSTR_FORMAT_U_IMM_MIN: i32 = -524_288;
-const RUSTV_INSTR_FORMAT_U_IMM_MAX: i32 = 1_048_576;
+// 20 bits
+const RUSTV_INSTR_FORMAT_U_IMM_MIN: i32 = 0;
+const RUSTV_INSTR_FORMAT_U_IMM_MAX: i32 = 1_048_575;
 
 impl RiscvInstr {
     pub fn new(rd: Option<RiscvReg>, rs1: Option<RiscvReg>, rs2: Option<RiscvReg>, imm: Option<i32>, mnemonic: RiscvMnemonic, label: Option<String>, jumps: Option<Vec<String>>) -> Result<RiscvInstr, Box<dyn error::Error>> {
@@ -576,13 +577,13 @@ impl RiscvInstr {
             RiscvInstrFormat::R | RiscvInstrFormat::S | RiscvInstrFormat::B => {
                 match (rs1, rs2) {
                     (Some(rs1), Some(rs2)) => Ok(Vec::from([rs1, rs2])),
-                    _ => Err(InvalidRiscvInstrError { rd, rs1, rs2, imm, format }),
+                    _ => Err(InvalidRiscvInstrError { mnemonic, rd, rs1, rs2, imm, format }),
                 }
             },
             RiscvInstrFormat::I | RiscvInstrFormat::RWITHOUTRS2 => {
                 match rs1 {
                     Some(rs1) => Ok(Vec::from([rs1])),
-                    None => Err(InvalidRiscvInstrError { rd, rs1, rs2, imm, format }),
+                    None => Err(InvalidRiscvInstrError { mnemonic, rd, rs1, rs2, imm, format }),
                 }
             },
             RiscvInstrFormat::U | RiscvInstrFormat::J => Ok(Vec::new()),
@@ -606,7 +607,7 @@ impl RiscvInstr {
             RiscvInstrFormat::R | RiscvInstrFormat::I | RiscvInstrFormat::U | RiscvInstrFormat::J | RiscvInstrFormat::RWITHOUTRS2 => {
                 match rd {
                     Some(rd) => Ok(Vec::from([rd])),
-                    _ => Err(InvalidRiscvInstrError { rd, rs1, rs2, imm, format }),
+                    _ => Err(InvalidRiscvInstrError { mnemonic, rd, rs1, rs2, imm, format }),
                 }
             },
             RiscvInstrFormat::S | RiscvInstrFormat::B => {
@@ -631,21 +632,21 @@ impl RiscvInstr {
         if let Some(imm) = imm {
             match format {
                 RiscvInstrFormat::R | RiscvInstrFormat::RWITHOUTRS2 => {
-                    return Err(InvalidRiscvInstrError { rd, rs1, rs2, imm: Some(imm), format }.into())
+                    return Err(InvalidRiscvInstrError { mnemonic, rd, rs1, rs2, imm: Some(imm), format }.into())
                 },
                 RiscvInstrFormat::I => {
                     if imm > RUSTV_INSTR_FORMAT_I_IMM_MAX || imm < RUSTV_INSTR_FORMAT_I_IMM_MIN {
-                        return Err(InvalidRiscvInstrError { rd, rs1, rs2, imm: Some(imm), format }.into())
+                        return Err(InvalidRiscvInstrError { mnemonic, rd, rs1, rs2, imm: Some(imm), format }.into())
                     }
                 },
                 RiscvInstrFormat::S | RiscvInstrFormat::B => {
                     if imm > RUSTV_INSTR_FORMAT_S_IMM_MAX || imm < RUSTV_INSTR_FORMAT_S_IMM_MIN {
-                        return Err(InvalidRiscvInstrError { rd, rs1, rs2, imm: Some(imm), format }.into())
+                        return Err(InvalidRiscvInstrError { mnemonic, rd, rs1, rs2, imm: Some(imm), format }.into())
                     }
                 },
                 RiscvInstrFormat::U | RiscvInstrFormat::J => {
                     if (imm > RUSTV_INSTR_FORMAT_U_IMM_MAX || imm < RUSTV_INSTR_FORMAT_U_IMM_MIN) && mnemonic != RiscvMnemonic::LUI {
-                        return Err(InvalidRiscvInstrError { rd, rs1, rs2, imm: Some(imm), format }.into())
+                        return Err(InvalidRiscvInstrError { mnemonic, rd, rs1, rs2, imm: Some(imm), format }.into())
                     }
                 },
             }
@@ -2153,25 +2154,52 @@ fn riscv_append_long_sign_flip(riscv_code_vregs: &mut Vec<RiscvInstr>, valuehigh
 fn riscv_append_set_vreg_to_cp_offset(riscv_code_vregs: &mut Vec<RiscvInstr>, constant_pool: &Vec<CpInfo>, cp_index: u16, cp_offset_vreg: u32) -> Result<(), Box<dyn error::Error>> {
     let cp_offset = get_cp_offset_from_index(&constant_pool, cp_index);
 
-    let rd = Some(RiscvReg::TEMP(RiscvTempReg::INT(cp_offset_vreg)));
-    let rs1 = None;
-    let rs2 = None;
-    let imm = Some(cp_offset as i32);
-    let mnemonic = RiscvMnemonic::LUI;
-    riscv_code_vregs.push(RiscvInstr::new(rd, rs1, rs2, imm, mnemonic, None, None)?);
-
-    let rd = Some(RiscvReg::TEMP(RiscvTempReg::INT(cp_offset_vreg)));
-    let rs1 = Some(RiscvReg::TEMP(RiscvTempReg::INT(cp_offset_vreg)));
-    let rs2 = None;
-    let imm = Some((cp_offset & 0xFFF) as i32);
-    let mnemonic = RiscvMnemonic::ADDI;
-    riscv_code_vregs.push(RiscvInstr::new(rd, rs1, rs2, imm, mnemonic, None, None)?);
+    riscv_append_load_32_bit_immediate(riscv_code_vregs, cp_offset_vreg, cp_offset)?;
 
     let rd = Some(RiscvReg::TEMP(RiscvTempReg::INT(cp_offset_vreg)));
     let rs1 = Some(RiscvReg::TEMP(RiscvTempReg::INT(cp_offset_vreg)));
     let rs2 = Some(RiscvReg::CP);
     let imm = None;
     let mnemonic = RiscvMnemonic::ADD;
+    riscv_code_vregs.push(RiscvInstr::new(rd, rs1, rs2, imm, mnemonic, None, None)?);
+
+    return Ok(());
+}
+
+/* Doda LUI in ADDI ukaza za nalaganje 32-bitne vrednosti v register */
+fn riscv_append_load_32_bit_immediate(riscv_code_vregs: &mut Vec<RiscvInstr>, vreg: u32, value: u32) -> Result<(), Box<dyn error::Error>> {
+    let mut lui_value = value >> 12;
+    let addi_value = value & 0xFFF;
+
+    if addi_value >> 11 == 1 {
+        // ADDI pričakuje signed 12-bitno vrednost.
+        // Če je sign bit (MSB) 1, bo ta negativna.
+        // H končni vrednosti se bo torej odštelo še dodatnih 4096 (2^12).
+
+        // Da to popravimo, LUI vrednosti dodamo 1.
+        // Ker je MSB od LUI vrednosti v bistvu bit 12 (0-indexed) od končne vrednosti,
+        // smo ji s tem v bistvu dodali 4096.
+
+        lui_value += 1;
+    }
+
+    // popravek LUI vrednosti če se je zgodil "preliv" v bit 20
+    let lui_value = (lui_value & 0xFFFFF) as i32;
+    // sign extend ADDI vrednosti
+    let addi_value = ((addi_value as i32) << 20) >> 20;
+
+    let rd = Some(RiscvReg::TEMP(RiscvTempReg::INT(vreg)));
+    let rs1 = None;
+    let rs2 = None;
+    let imm = Some(lui_value);
+    let mnemonic = RiscvMnemonic::LUI;
+    riscv_code_vregs.push(RiscvInstr::new(rd, rs1, rs2, imm, mnemonic, None, None)?);
+
+    let rd = Some(RiscvReg::TEMP(RiscvTempReg::INT(vreg)));
+    let rs1 = Some(RiscvReg::TEMP(RiscvTempReg::INT(vreg)));
+    let rs2 = None;
+    let imm = Some(addi_value);
+    let mnemonic = RiscvMnemonic::ADDI;
     riscv_code_vregs.push(RiscvInstr::new(rd, rs1, rs2, imm, mnemonic, None, None)?);
 
     return Ok(());
@@ -3951,19 +3979,7 @@ fn code_to_riscv_vregs(attribute_code: &AttributeCode, constant_pool: &Vec<CpInf
                 let branch_offset = i32::from(((u16::from(branch_byte_1) << 8) | u16::from(branch_byte_2)) as i16);
                 let branch_target = (i as i32 + branch_offset) as usize;
 
-                let rd = Some(RiscvReg::TEMP(RiscvTempReg::INT(vreg_base + 1)));
-                let rs1 = None;
-                let rs2 = None;
-                let imm = Some(return_opcode_index as i32);
-                let mnemonic = RiscvMnemonic::LUI;
-                riscv_code_vregs.push(RiscvInstr::new(rd, rs1, rs2, imm, mnemonic, None, None)?);
-
-                let rd = Some(RiscvReg::TEMP(RiscvTempReg::INT(vreg_base + 1)));
-                let rs1 = Some(RiscvReg::TEMP(RiscvTempReg::INT(vreg_base + 1)));
-                let rs2 = None;
-                let imm = Some((return_opcode_index & 0xFFF) as i32);
-                let mnemonic = RiscvMnemonic::ADDI;
-                riscv_code_vregs.push(RiscvInstr::new(rd, rs1, rs2, imm, mnemonic, None, None)?);
+                riscv_append_load_32_bit_immediate(&mut riscv_code_vregs, vreg_base + 1, return_opcode_index.try_into().unwrap())?;
 
                 riscv_instr_index_jumps_to_code_index.insert(riscv_code_vregs.len(), branch_target);
 
@@ -3989,19 +4005,7 @@ fn code_to_riscv_vregs(attribute_code: &AttributeCode, constant_pool: &Vec<CpInf
                 let branch_offset = ((u32::from(branch_byte_1) << 24) | (u32::from(branch_byte_2) << 16) | (u32::from(branch_byte_3) << 8) | u32::from(branch_byte_4)) as i32;
                 let branch_target = (i as i32 + branch_offset) as usize;
 
-                let rd = Some(RiscvReg::TEMP(RiscvTempReg::INT(vreg_base + 1)));
-                let rs1 = None;
-                let rs2 = None;
-                let imm = Some(return_opcode_index as i32);
-                let mnemonic = RiscvMnemonic::LUI;
-                riscv_code_vregs.push(RiscvInstr::new(rd, rs1, rs2, imm, mnemonic, None, None)?);
-
-                let rd = Some(RiscvReg::TEMP(RiscvTempReg::INT(vreg_base + 1)));
-                let rs1 = Some(RiscvReg::TEMP(RiscvTempReg::INT(vreg_base + 1)));
-                let rs2 = None;
-                let imm = Some((return_opcode_index & 0xFFF) as i32);
-                let mnemonic = RiscvMnemonic::ADDI;
-                riscv_code_vregs.push(RiscvInstr::new(rd, rs1, rs2, imm, mnemonic, None, None)?);
+                riscv_append_load_32_bit_immediate(&mut riscv_code_vregs, vreg_base + 1, return_opcode_index.try_into().unwrap())?;
 
                 riscv_instr_index_jumps_to_code_index.insert(riscv_code_vregs.len(), branch_target);
 
@@ -4290,40 +4294,16 @@ fn code_to_riscv_vregs(attribute_code: &AttributeCode, constant_pool: &Vec<CpInf
 
                 match &constant_pool[cp_index as usize] {
                     CpInfo::Integer(cp_integer) => {
-                        let value = ((u32::from(cp_integer.bytes[0]) << 24) | (u32::from(cp_integer.bytes[1]) << 16) | (u32::from(cp_integer.bytes[2]) << 8) | u32::from(cp_integer.bytes[3])) as i32;
+                        let value = (u32::from(cp_integer.bytes[0]) << 24) | (u32::from(cp_integer.bytes[1]) << 16) | (u32::from(cp_integer.bytes[2]) << 8) | u32::from(cp_integer.bytes[3]);
                         
-                        let rd = Some(RiscvReg::TEMP(RiscvTempReg::INT(vreg_base + 1)));
-                        let rs1 = None;
-                        let rs2 = None;
-                        let imm = Some(value);
-                        let mnemonic = RiscvMnemonic::LUI;
-                        riscv_code_vregs.push(RiscvInstr::new(rd, rs1, rs2, imm, mnemonic, None, None)?);
-                        
-                        let rd = Some(RiscvReg::TEMP(RiscvTempReg::INT(vreg_base + 1)));
-                        let rs1 = Some(RiscvReg::TEMP(RiscvTempReg::INT(vreg_base + 1)));
-                        let rs2 = None;
-                        let imm = Some(value & 0xFFF);
-                        let mnemonic = RiscvMnemonic::ADDI;
-                        riscv_code_vregs.push(RiscvInstr::new(rd, rs1, rs2, imm, mnemonic, None, None)?);
+                        riscv_append_load_32_bit_immediate(&mut riscv_code_vregs, vreg_base + 1, value)?;
 
                         operand_stack_types.push(JvmType::INT);
                     }
                     CpInfo::Float(cp_float) => {
-                        let value = ((u32::from(cp_float.bytes[0]) << 24) | (u32::from(cp_float.bytes[1]) << 16) | (u32::from(cp_float.bytes[2]) << 8) | u32::from(cp_float.bytes[3])) as i32;
+                        let value = (u32::from(cp_float.bytes[0]) << 24) | (u32::from(cp_float.bytes[1]) << 16) | (u32::from(cp_float.bytes[2]) << 8) | u32::from(cp_float.bytes[3]);
                         
-                        let rd = Some(RiscvReg::TEMP(RiscvTempReg::INT(vreg_base + 1)));
-                        let rs1 = None;
-                        let rs2 = None;
-                        let imm = Some(value);
-                        let mnemonic = RiscvMnemonic::LUI;
-                        riscv_code_vregs.push(RiscvInstr::new(rd, rs1, rs2, imm, mnemonic, None, None)?);
-
-                        let rd = Some(RiscvReg::TEMP(RiscvTempReg::INT(vreg_base + 1)));
-                        let rs1 = Some(RiscvReg::TEMP(RiscvTempReg::INT(vreg_base + 1)));
-                        let rs2 = None;
-                        let imm = Some(value & 0xFFF);
-                        let mnemonic = RiscvMnemonic::ADDI;
-                        riscv_code_vregs.push(RiscvInstr::new(rd, rs1, rs2, imm, mnemonic, None, None)?);
+                        riscv_append_load_32_bit_immediate(&mut riscv_code_vregs, vreg_base + 1, value)?;
 
                         let rd = Some(RiscvReg::TEMP(RiscvTempReg::FLOAT(vreg_base + 1)));
                         let rs1 = Some(RiscvReg::TEMP(RiscvTempReg::INT(vreg_base + 1)));
@@ -4360,33 +4340,8 @@ fn code_to_riscv_vregs(attribute_code: &AttributeCode, constant_pool: &Vec<CpInf
                 let cp_index = (u16::from(index_byte_1) << 8) | u16::from(index_byte_2);
                 match &constant_pool[cp_index as usize] {
                     CpInfo::Long(cp_long) => {
-                        let rd = Some(RiscvReg::TEMP(RiscvTempReg::INT(vreg_base + 1)));
-                        let rs1 = None;
-                        let rs2 = None;
-                        let imm: Option<i32> = Some(cp_long.low_bytes as i32);
-                        let mnemonic = RiscvMnemonic::LUI;
-                        riscv_code_vregs.push(RiscvInstr::new(rd, rs1, rs2, imm, mnemonic, None, None)?);
-
-                        let rd = Some(RiscvReg::TEMP(RiscvTempReg::INT(vreg_base + 1)));
-                        let rs1 = Some(RiscvReg::TEMP(RiscvTempReg::INT(vreg_base + 1)));
-                        let rs2 = None;
-                        let imm = Some(cp_long.low_bytes as i32 & 0xFFF);
-                        let mnemonic = RiscvMnemonic::ADDI;
-                        riscv_code_vregs.push(RiscvInstr::new(rd, rs1, rs2, imm, mnemonic, None, None)?);
-
-                        let rd = Some(RiscvReg::TEMP(RiscvTempReg::INT(vreg_base + 2)));
-                        let rs1 = None;
-                        let rs2 = None;
-                        let imm: Option<i32> = Some(cp_long.high_bytes as i32);
-                        let mnemonic = RiscvMnemonic::LUI;
-                        riscv_code_vregs.push(RiscvInstr::new(rd, rs1, rs2, imm, mnemonic, None, None)?);
-
-                        let rd = Some(RiscvReg::TEMP(RiscvTempReg::INT(vreg_base + 2)));
-                        let rs1 = Some(RiscvReg::TEMP(RiscvTempReg::INT(vreg_base + 2)));
-                        let rs2 = None;
-                        let imm = Some(cp_long.high_bytes as i32 & 0xFFF);
-                        let mnemonic = RiscvMnemonic::ADDI;
-                        riscv_code_vregs.push(RiscvInstr::new(rd, rs1, rs2, imm, mnemonic, None, None)?);
+                        riscv_append_load_32_bit_immediate(&mut riscv_code_vregs, vreg_base + 1, cp_long.low_bytes)?;
+                        riscv_append_load_32_bit_immediate(&mut riscv_code_vregs, vreg_base + 2, cp_long.high_bytes)?;
 
                         operand_stack_types.push(JvmType::LONG);
                     },
@@ -4637,19 +4592,7 @@ fn code_to_riscv_vregs(attribute_code: &AttributeCode, constant_pool: &Vec<CpInf
 
                     let branch_target = (curr_opcode_i as i32 + offset) as usize;
 
-                    let rd = Some(RiscvReg::TEMP(RiscvTempReg::INT(match_value_vreg)));
-                    let rs1 = None;
-                    let rs2 = None;
-                    let imm = Some(match_value);
-                    let mnemonic = RiscvMnemonic::LUI;
-                    riscv_code_vregs.push(RiscvInstr::new(rd, rs1, rs2, imm, mnemonic, None, None)?);
-
-                    let rd = Some(RiscvReg::TEMP(RiscvTempReg::INT(match_value_vreg)));
-                    let rs1 = Some(RiscvReg::TEMP(RiscvTempReg::INT(match_value_vreg)));
-                    let rs2 = None;
-                    let imm = Some(match_value & 0xFFF);
-                    let mnemonic = RiscvMnemonic::ADDI;
-                    riscv_code_vregs.push(RiscvInstr::new(rd, rs1, rs2, imm, mnemonic, None, None)?);
+                    riscv_append_load_32_bit_immediate(&mut riscv_code_vregs, match_value_vreg, match_value.try_into().unwrap())?;
 
                     riscv_instr_index_jumps_to_code_index.insert(riscv_code_vregs.len(), branch_target);
 
@@ -5360,21 +5303,9 @@ fn code_to_riscv_vregs(attribute_code: &AttributeCode, constant_pool: &Vec<CpInf
                 let byte_2 = attribute_code.code[i + 2];
                 i += 2;
 
-                let value = ((u16::from(byte_1) << 8) | u16::from(byte_2)) as i32;
+                let value = (u16::from(byte_1) << 8) | u16::from(byte_2);
 
-                let rd = Some(RiscvReg::TEMP(RiscvTempReg::INT(vreg_base + 1)));
-                let rs1 = None;
-                let rs2 = None;
-                let imm = Some(value);
-                let mnemonic = RiscvMnemonic::LUI;
-                riscv_code_vregs.push(RiscvInstr::new(rd, rs1, rs2, imm, mnemonic, None, None)?);
-
-                let rd = Some(RiscvReg::TEMP(RiscvTempReg::INT(vreg_base + 1)));
-                let rs1 = Some(RiscvReg::TEMP(RiscvTempReg::INT(vreg_base + 1)));
-                let rs2 = None;
-                let imm = Some(value & 0xFFF);
-                let mnemonic = RiscvMnemonic::ADDI;
-                riscv_code_vregs.push(RiscvInstr::new(rd, rs1, rs2, imm, mnemonic, None, None)?);
+                riscv_append_load_32_bit_immediate(&mut riscv_code_vregs, vreg_base + 1, value.into())?;
 
                 vreg_base += 1;
                 operand_stack_types.push(JvmType::SHORT);
@@ -5510,33 +5441,8 @@ fn code_to_riscv_vregs(attribute_code: &AttributeCode, constant_pool: &Vec<CpInf
 
                 /* init */
 
-                let rd = Some(RiscvReg::TEMP(RiscvTempReg::INT(low_vreg)));
-                let rs1 = None;
-                let rs2 = None;
-                let imm = Some(low);
-                let mnemonic = RiscvMnemonic::LUI;
-                riscv_code_vregs.push(RiscvInstr::new(rd, rs1, rs2, imm, mnemonic, None, None)?);
-
-                let rd = Some(RiscvReg::TEMP(RiscvTempReg::INT(low_vreg)));
-                let rs1 = Some(RiscvReg::TEMP(RiscvTempReg::INT(low_vreg)));
-                let rs2 = None;
-                let imm = Some(low & 0xFFF);
-                let mnemonic = RiscvMnemonic::ADDI;
-                riscv_code_vregs.push(RiscvInstr::new(rd, rs1, rs2, imm, mnemonic, None, None)?);
-
-                let rd = Some(RiscvReg::TEMP(RiscvTempReg::INT(high_vreg)));
-                let rs1 = None;
-                let rs2 = None;
-                let imm = Some(high);
-                let mnemonic = RiscvMnemonic::LUI;
-                riscv_code_vregs.push(RiscvInstr::new(rd, rs1, rs2, imm, mnemonic, None, None)?);
-
-                let rd = Some(RiscvReg::TEMP(RiscvTempReg::INT(high_vreg)));
-                let rs1 = Some(RiscvReg::TEMP(RiscvTempReg::INT(high_vreg)));
-                let rs2 = None;
-                let imm = Some(high & 0xFFF);
-                let mnemonic = RiscvMnemonic::ADDI;
-                riscv_code_vregs.push(RiscvInstr::new(rd, rs1, rs2, imm, mnemonic, None, None)?);
+                riscv_append_load_32_bit_immediate(&mut riscv_code_vregs, low_vreg, low as u32)?;
+                riscv_append_load_32_bit_immediate(&mut riscv_code_vregs, high_vreg, high as u32)?;
 
                 let rd = Some(RiscvReg::TEMP(RiscvTempReg::INT(const_word_size_reg)));
                 let rs1 = Some(RiscvReg::ZERO);
@@ -5584,7 +5490,7 @@ fn code_to_riscv_vregs(attribute_code: &AttributeCode, constant_pool: &Vec<CpInf
                 let rd = Some(RiscvReg::TEMP(RiscvTempReg::INT(pc_rel_index_vreg)));
                 let rs1 = None;
                 let rs2 = None;
-                let imm = None;
+                let imm = Some(0);
                 let mnemonic = RiscvMnemonic::AUIPC;
                 riscv_code_vregs.push(RiscvInstr::new(rd, rs1, rs2, imm, mnemonic, None, None)?);
 

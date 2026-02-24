@@ -15,6 +15,15 @@ pub fn analyse(code: &mut Vec<RiscvInstr>, epilogue_label: String) {
     let mut label_to_instr = HashMap::new();
 
     for instr in code.iter_mut() {
+
+        // če se med register allocationom zgodi spill, se liveness analysis ponovi
+        // zato je pred začetkov treba sprazniti in in out
+        instr.live_in_int.clear();
+        instr.live_in_float.clear();
+        instr.live_out_int.clear();
+        instr.live_out_float.clear();
+        
+
         instr.live_in_int.extend(&instr.uses_int);
         instr.live_in_float.extend(&instr.uses_float);
 

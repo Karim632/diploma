@@ -78,12 +78,12 @@ fn allocate_int_or_float(riscv_code_vregs: &mut Vec<RiscvInstr>, temp_reg_type: 
                 new_color += 1;
             }
 
-            let max_color = match temp_reg_type {
+            let num_regs = match temp_reg_type {
                 TempRegType::INT => NUM_TEMP_REGS_INT,
                 TempRegType::FLOAT => NUM_TEMP_REGS_FLOAT,
             };
 
-            if new_color > max_color {
+            if new_color >= num_regs {
                 // Zmanjkalo barv, potrdi spill
                 if node.borrow().potential_spill {
                     spilled_vregs.insert(node.borrow().vreg);
@@ -101,7 +101,8 @@ fn allocate_int_or_float(riscv_code_vregs: &mut Vec<RiscvInstr>, temp_reg_type: 
             for spilled_vreg in spilled_vregs {
                 *saved_temps_size += u32::from(WORD_SIZE);
 
-                let fp_offset = -(i32::from(WORD_SIZE) * 2) - *saved_temps_size as i32;
+                // old FP, RA, shranjeni temps od prejšnje funkcije, do zdaj shranjeni temps trenutne funkcije  
+                let fp_offset = -(i32::from(WORD_SIZE) * 2) - (NUM_TEMP_REGS_INT + NUM_TEMP_REGS_FLOAT) * i32::from(WORD_SIZE) - *saved_temps_size as i32;
 
                 let mut i = 0;
                 while i < riscv_code_vregs.len() {
