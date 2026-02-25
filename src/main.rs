@@ -10,7 +10,7 @@ pub mod register_allocation;
 pub mod asm_writer;
 
 fn main() {
-    let class_file = match class_parser::parse_class_file("Test1.class") {
+    let class_file = match class_parser::parse_class_file("Test.class") {
         Ok(result) => result,
         Err(err) => panic!("{}", err),
     };

@@ -3783,12 +3783,14 @@ fn code_to_riscv_vregs(attribute_code: &AttributeCode, constant_pool: &Vec<CpInf
                     }
                 }
 
-                let rd = Some(RiscvReg::SP);
-                let rs1 = Some(RiscvReg::SP);
-                let rs2 = None;
-                let imm = Some(sp_offset);
-                let mnemonic = RiscvMnemonic::ADDI;
-                riscv_code_vregs.push(RiscvInstr::new(rd, rs1, rs2, imm, mnemonic, None, None)?);
+                if !args_types.is_empty() {
+                    let rd = Some(RiscvReg::SP);
+                    let rs1 = Some(RiscvReg::SP);
+                    let rs2 = None;
+                    let imm = Some(sp_offset);
+                    let mnemonic = RiscvMnemonic::ADDI;
+                    riscv_code_vregs.push(RiscvInstr::new(rd, rs1, rs2, imm, mnemonic, None, None)?);
+                }
 
                 let function_label = get_function_label(method_name_utf8, this_class_name.clone());
 
@@ -3843,13 +3845,15 @@ fn code_to_riscv_vregs(attribute_code: &AttributeCode, constant_pool: &Vec<CpInf
                     }
                 }
 
-                // sprosti prostor od argumentov
-                let rd = Some(RiscvReg::SP);
-                let rs1 = Some(RiscvReg::SP);
-                let rs2 = None;
-                let imm = Some(-sp_offset);
-                let mnemonic = RiscvMnemonic::ADDI;
-                riscv_code_vregs.push(RiscvInstr::new(rd, rs1, rs2, imm, mnemonic, None, None)?);
+                // sprosti prostor od argumentov, če je treba
+                if !args_types.is_empty() {
+                    let rd = Some(RiscvReg::SP);
+                    let rs1 = Some(RiscvReg::SP);
+                    let rs2 = None;
+                    let imm = Some(-sp_offset);
+                    let mnemonic = RiscvMnemonic::ADDI;
+                    riscv_code_vregs.push(RiscvInstr::new(rd, rs1, rs2, imm, mnemonic, None, None)?);
+                }
             },
             JVM_OPCODE_INVOKEVIRTUAL => {
                 return Err(UnimplementedJVMInstrError { opcode, instr: "invokevirtual".to_string() }.into());
