@@ -76,8 +76,20 @@ pub fn asm_write(out_file_path: String, class_file: &ClassFile, method_i_to_risc
         }
     }
 
-    // klic <clinit> za inicializacijo razrednih spremenljivk
-    writeln!(&out_file, "\t\tCALL clinit").unwrap();
+    // klic <clinit> za inicializacijo razrednih spremenljivk, če obstaja
+    for method_i in method_i_to_riscv_code.keys() {
+        let method_info = &class_file.methods[*method_i as usize];
+
+        let method_name_utf8 = match &class_file.constant_pool[method_info.name_index as usize] {
+            CpInfo::Utf8(cp_utf8) => cp_utf8.converted.clone(),
+            other => panic!("asm_write, getting utf8 method name, instead got {:#?}", other)
+        };
+
+        if method_name_utf8 == "<clinit>" {
+            writeln!(&out_file, "\t\tCALL clinit").unwrap();
+            break;
+        }
+    }
     
     // klic main in exit
     writeln!(&out_file, "\t\tCALL _main").unwrap();
