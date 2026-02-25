@@ -1772,7 +1772,7 @@ fn riscv_vregs_append_save_ret_val_and_j_to_epilogue(riscv_code_vregs: &mut Vec<
                 let rs1 = Some(RiscvReg::TEMP(RiscvTempReg::FLOAT(vreg_base)));
                 let rs2 = Some(RiscvReg::TEMP(RiscvTempReg::FLOAT(vreg_base)));
                 let imm = None;
-                let mnemonic = RiscvMnemonic::FSGNJNS;
+                let mnemonic = RiscvMnemonic::FSGNJS;
                 riscv_code_vregs.push(RiscvInstr::new(rd, rs1, rs2, imm, mnemonic, None, None)?);
             },
         }   
