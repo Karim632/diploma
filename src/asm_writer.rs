@@ -76,6 +76,10 @@ pub fn asm_write(out_file_path: String, class_file: &ClassFile, method_i_to_risc
         }
     }
 
+    // klic <clinit> za inicializacijo razrednih spremenljivk
+    writeln!(&out_file, "\t\tCALL clinit").unwrap();
+    
+    // klic main in exit
     writeln!(&out_file, "\t\tCALL _main").unwrap();
     writeln!(&out_file, "\t\tLI a0, 0").unwrap();
     writeln!(&out_file, "\t\tCALL exit").unwrap();

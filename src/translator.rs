@@ -785,7 +785,7 @@ pub fn to_riscv_vregs(class_file: &ClassFile) -> Result<HashMap<usize, Vec<Riscv
     let mut method_i_to_riscv_code_vregs = HashMap::new();
     for (i, method) in class_file.methods.iter().enumerate() {
 
-        // skip <init> and <clinit>
+        // skip <init>
         let method_name_cpinfo = &class_file.constant_pool[method.name_index as usize];
         let method_name_utf8;
         if let CpInfo::Utf8(cpinfo_utf8) = method_name_cpinfo {
@@ -795,7 +795,7 @@ pub fn to_riscv_vregs(class_file: &ClassFile) -> Result<HashMap<usize, Vec<Riscv
             panic!("method.name_index leads to {:#?}", method_name_cpinfo);
         }
 
-        if method_name_utf8 == "<init>" || method_name_utf8 == "<clinit>" {
+        if method_name_utf8 == "<init>" {
             continue;
         }
 
@@ -1912,11 +1912,11 @@ pub fn get_jvm_type_from_descriptor(descriptor_type_char: char) -> Result<JvmTyp
 }
 
 pub fn get_function_label(method_name: String, _class_name: String) -> String {
-    return format!("{}", method_name);
+    return format!("{}", method_name.replace("<", "").replace(">", ""));
 }
 
 pub fn get_function_epilogue_label(method_name: String, _class_name: String) -> String {
-    return format!("{}_epilogue", method_name);
+    return format!("{}_epilogue", method_name.replace("<", "").replace(">", ""));
 }
 
 pub fn get_method_arg_and_return_types(method_descriptor: String) -> Result<(Vec<JvmType>, Option<JvmType>), Box<dyn error::Error>> {
@@ -1970,7 +1970,7 @@ fn get_cp_offset_from_index(constant_pool: &Vec<CpInfo>, index: u16) -> u32 {
 
     for i in 0..index {
         offset += match &constant_pool[i as usize] {
-            CpInfo::Utf8(cp_utf8) => cp_utf8.converted.bytes().len() as u32 + 1, // še null terminator
+            CpInfo::Utf8(cp_utf8) => (cp_utf8.converted.bytes().len() as u32 + 1) * u32::from(WORD_SIZE), // še null terminator
             CpInfo::Integer(_) => 4,
             CpInfo::Float(_) => 4,
             CpInfo::Long(_) => 8,
@@ -1981,7 +1981,7 @@ fn get_cp_offset_from_index(constant_pool: &Vec<CpInfo>, index: u16) -> u32 {
                     other => panic!("trying to get name of class in cp, instead got: {:#?}", other)
                 };
 
-                cp_utf8.converted.bytes().len() as u32 + 1
+                (cp_utf8.converted.bytes().len() as u32 + 1) * u32::from(WORD_SIZE)
             },
             CpInfo::String(cp_string) => {
                 let cp_utf8 = match &constant_pool[cp_string.string_index as usize] {
@@ -1989,7 +1989,7 @@ fn get_cp_offset_from_index(constant_pool: &Vec<CpInfo>, index: u16) -> u32 {
                     other => panic!("trying to get utf8 of string in cp, instead got: {:#?}", other)
                 };
 
-                cp_utf8.converted.bytes().len() as u32 + 1
+                (cp_utf8.converted.bytes().len() as u32 + 1) * u32::from(WORD_SIZE)
             },
             CpInfo::FieldRef(_) => {
                 let descriptor = get_utf8_descriptor_from_field_or_method_or_interface_method_info(constant_pool, i as u16);
